@@ -45,5 +45,30 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- Push Notifications Background Mode -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Location Permissions (for Google Maps) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>HOPA necesită locația pentru a afișa porțile din apropiere pe hartă.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>HOPA necesită locația pentru funcții de geolocalizare.</string>
+	
+	<!-- Local Network (for Shelly devices) -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>HOPA accesează rețeaua locală pentru a controla dispozitivele smart gate.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+	</array>
+	
+	<!-- Firebase/APNS -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 </dict>
 </plist>
