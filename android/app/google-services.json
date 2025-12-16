@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "749596686747",
+    "project_id": "hopa-d61bc",
+    "storage_bucket": "hopa-d61bc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:749596686747:android:140a5fa1a304acf56a093e",
+        "android_client_info": {
+          "package_name": "com.example.hopa_final"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTigu9fsxBz-zOyHMl77zwnASHxfwsZ-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

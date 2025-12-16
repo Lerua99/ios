@@ -1,0 +1,127 @@
+═══════════════════════════════════════════════════════════════
+   INSTRUCȚIUNI GOOGLE MAPS - HOPA FINAL
+═══════════════════════════════════════════════════════════════
+
+📋 INFORMAȚII APLICAȚIE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Package Name:    com.example.hopa_final
+SHA-1 Fingerprint: 10:A5:FA:EC:95:16:86:47:81:7B:5F:0D:AD:B1:83:5C:28:88:54:23
+API Key:         AIzaSyDTigu9fsxBz-zOyHMl77zwnASHxfwsZ-E
+
+═══════════════════════════════════════════════════════════════
+   ✅ PAȘI DE URMAT (în ordine)
+═══════════════════════════════════════════════════════════════
+
+1️⃣  ACTIVEAZĂ MAPS SDK FOR ANDROID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Link direct:
+   https://console.cloud.google.com/apis/library/maps-android-backend.googleapis.com
+
+   ✓ Selectează proiectul "HOPA" (sau hopa-d61bc)
+   ✓ Dacă scrie "ENABLE", click pe el!
+   ✓ Dacă scrie "MANAGE", înseamnă că este activat ✓
+
+
+2️⃣  ACTIVEAZĂ GEOCODING API (opțional, dar recomandat)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Link direct:
+   https://console.cloud.google.com/apis/library/geocoding-backend.googleapis.com
+
+   ✓ Selectează proiectul "HOPA"
+   ✓ Dacă scrie "ENABLE", click pe el!
+
+
+3️⃣  VERIFICĂ RESTRICȚIILE API KEY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Link:
+   https://console.cloud.google.com/apis/credentials
+
+   ✓ Click pe "API key 3" (AIzaSyDTigu9fsxBz-zOyHMl77zwnASHxfwsZ-E)
+
+   La "Application restrictions":
+   ✓ Selectează: Android apps
+   ✓ Verifică că există intrarea:
+      Package name: com.example.hopa_final
+      SHA-1: 10:A5:FA:EC:95:16:86:47:81:7B:5F:0D:AD:B1:83:5C:28:88:54:23
+
+   La "API restrictions":
+   ✓ Selectează: Restrict key
+   ✓ Bifează:
+      - Maps SDK for Android
+      - Geocoding API
+
+   ✓ Click "SAVE"
+
+
+4️⃣  AȘTEAPTĂ 2-5 MINUTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Google are nevoie de timp să propage schimbările!
+
+
+5️⃣  REINSTALEAZĂ APK-UL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   APK-ul nou generat:
+   D:\Ampps\www\nou\hopa_final\build\app\outputs\flutter-apk\app-release.apk
+
+   ✓ Dezinstalează aplicația veche de pe telefon
+   ✓ Instalează noul APK
+   ✓ Testează harta!
+
+
+═══════════════════════════════════════════════════════════════
+   🔍 VERIFICARE LOGCAT (dacă tot nu merge)
+═══════════════════════════════════════════════════════════════
+
+Pentru a vedea eroarea exactă:
+
+1. Conectează telefonul la PC
+2. Rulează în terminal:
+   adb logcat | findstr "Google"
+
+3. Caută mesaje de tipul:
+   ❌ API_KEY_INVALID → cheia API nu este configurată corect
+   ❌ API_NOT_AUTHORIZED → restricțiile nu sunt configurate corect
+   ❌ Maps SDK for Android is not enabled → Maps SDK nu este activat
+
+
+═══════════════════════════════════════════════════════════════
+   📱 VERIFICĂRI FINALE
+═══════════════════════════════════════════════════════════════
+
+✓ AndroidManifest.xml conține API Key-ul
+✓ Package name este corect (com.example.hopa_final)
+✓ SHA-1 fingerprint este corect adăugat în Google Cloud
+✓ Maps SDK for Android este ACTIVAT
+✓ API Key are restricțiile corecte
+✓ APK-ul este rebuildat după configurare
+✓ Au trecut cel puțin 2-5 minute după modificări
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

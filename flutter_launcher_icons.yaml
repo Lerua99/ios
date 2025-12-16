@@ -1,0 +1,7 @@
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/new_app_icon.png" # Calea către noua iconiță
+  adaptive_icon_background: "#ffffff"
+  adaptive_icon_foreground: "assets/new_app_icon.png" # Folosim aceeași imagine pentru foreground
+  remove_alpha_ios: true 
