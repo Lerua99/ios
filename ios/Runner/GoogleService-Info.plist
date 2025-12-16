@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDt7ifwKxyV76FTwY5jezMdAc_OSCrlYTs</string>
+	<key>GCM_SENDER_ID</key>
+	<string>749596686747</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.hopaiot.hopafinal</string>
+	<key>PROJECT_ID</key>
+	<string>hopa-d61bc</string>
+	<key>STORAGE_BUCKET</key>
+	<string>hopa-d61bc.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:749596686747:ios:daf2f8997ce7a3676a093e</string>
+</dict>
+</plist>
+
