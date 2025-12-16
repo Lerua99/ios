@@ -28,14 +28,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Obține tokenul FCM pentru afișare rapidă
-    FirebaseMessaging.instance.getToken().then((token) {
-      if (mounted) setState(() => _fcmToken = token);
-    }).catchError((error) {
-      // Ignorăm eroarea Firebase - nu e critică pentru funcționarea aplicației
-      print('⚠️ Nu s-a putut obține FCM token: $error');
+    // Delay pentru a lăsa UI-ul să se randeze mai întâi
+    Future.delayed(Duration(milliseconds: 100), () {
+      if (mounted) {
+        _initFirebaseToken();
+        _fetchPlans();
+      }
     });
-    _fetchPlans();
+  }
+  
+  Future<void> _initFirebaseToken() async {
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (mounted) setState(() => _fcmToken = token);
+    } catch (error) {
+      print('⚠️ Nu s-a putut obține FCM token: $error');
+    }
   }
 
   Future<void> _fetchPlans() async {
@@ -479,8 +487,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .replaceAll('CT', 'Constanța')
         .replaceAll('JUDETUL', 'Județul');
 
-    return themeService.getBackgroundWidget(
-      Scaffold(
+    // Background direct pentru compatibilitate iOS
+    final bgDecoration = themeService.currentThemeData.hasGradient
+        ? BoxDecoration(
+            gradient: LinearGradient(
+              colors: themeService.currentThemeData.gradientColors!,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          )
+        : BoxDecoration(color: themeService.currentThemeData.backgroundColor);
+    
+    return Container(
+      decoration: bgDecoration,
+      child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
