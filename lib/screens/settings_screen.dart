@@ -28,22 +28,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Delay pentru a lăsa UI-ul să se randeze mai întâi
-    Future.delayed(Duration(milliseconds: 100), () {
-      if (mounted) {
-        _initFirebaseToken();
-        _fetchPlans();
-      }
-    });
-  }
-  
-  Future<void> _initFirebaseToken() async {
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
+    // Obține tokenul FCM pentru afișare rapidă
+    FirebaseMessaging.instance.getToken().then((token) {
       if (mounted) setState(() => _fcmToken = token);
-    } catch (error) {
+    }).catchError((error) {
+      // Ignorăm eroarea Firebase - nu e critică pentru funcționarea aplicației
       print('⚠️ Nu s-a putut obține FCM token: $error');
-    }
+    });
+    _fetchPlans();
   }
 
   Future<void> _fetchPlans() async {
@@ -487,38 +479,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .replaceAll('CT', 'Constanța')
         .replaceAll('JUDETUL', 'Județul');
 
-    // Background direct pentru compatibilitate iOS
-    final bgDecoration = themeService.currentThemeData.hasGradient
-        ? BoxDecoration(
-            gradient: LinearGradient(
-              colors: themeService.currentThemeData.gradientColors!,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          )
-        : BoxDecoration(color: themeService.currentThemeData.backgroundColor);
-    
-    return Container(
-      decoration: bgDecoration,
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: const Text(
-            'Setări',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Setări',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
           ),
         ),
-        body: SingleChildScrollView(
+      ),
+      body: themeService.getBackgroundWidget(
+        SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
