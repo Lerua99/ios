@@ -480,7 +480,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         .replaceAll('JUDETUL', 'Județul');
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: themeService.currentThemeData.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
