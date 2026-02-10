@@ -31,14 +31,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // Obține tokenul FCM pentru afișare rapidă
-    FirebaseMessaging.instance.getToken().then((token) {
+    _safeInit();
+  }
+
+  /// Inițializare defensivă — orice eroare este prinsă pentru a nu crasha ecranul
+  Future<void> _safeInit() async {
+    // 1. FCM token — complet opțional, nu blochează UI-ul
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
       if (mounted) setState(() => _fcmToken = token);
-    }).catchError((error) {
-      // Ignorăm eroarea Firebase - nu e critică pentru funcționarea aplicației
-      debugPrint('⚠️ Nu s-a putut obține FCM token: $error');
-    });
-    _fetchPlans();
+    } catch (e) {
+      debugPrint('⚠️ Nu s-a putut obține FCM token: $e');
+    }
+
+    // 2. Plans — complet opțional
+    try {
+      await _fetchPlans();
+    } catch (e) {
+      debugPrint('⚠️ Eroare la încărcarea planurilor: $e');
+    }
   }
 
   Future<void> _fetchPlans() async {
@@ -445,18 +456,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Wrap complet în try-catch — pe release builds Flutter arată ecran GRI
+    // dacă build() aruncă o excepție neprinsă. Acest wrapper garantează
+    // afișarea unui fallback vizibil în loc de ecranul gri.
+    try {
+      return _buildSettingsContent(context);
+    } catch (e) {
+      debugPrint('❌ CRASH în SettingsScreen.build(): $e');
+      return Scaffold(
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text('Setări', style: TextStyle(color: Colors.white)),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 64),
+              const SizedBox(height: 16),
+              const Text(
+                'Eroare la afișarea setărilor',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                e.toString(),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => setState(() {}),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                child: const Text('Reîncearcă'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _buildSettingsContent(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final themeService = Provider.of<ThemeService>(context);
     final userData = authService.userData;
     
-    final name = userData?['name'] ?? 'N/A';
-    final accountType = userData?['account_type'] ?? 'Standard';
-    final clientCode = userData?['activation_code'] ?? 'N/A';
-    final phone = userData?['phone'] ?? 'N/A';
-    final address = userData?['address'] ?? 'N/A';
-    final systemType = userData?['system_type'] ?? '';
+    final name = (userData?['name'] ?? 'N/A').toString();
+    final accountType = (userData?['account_type'] ?? 'Standard').toString();
+    final clientCode = (userData?['activation_code'] ?? 'N/A').toString();
+    final phone = (userData?['phone'] ?? 'N/A').toString();
+    final address = (userData?['address'] ?? 'N/A').toString();
+    final systemType = (userData?['system_type'] ?? '').toString();
     final displaySystemType = systemType.isEmpty || systemType == '-' ? 'OBLIGATORIU - Selectează marca' : systemType;
-    final device = userData?['device'] ?? 'Poartă Principală';
+    final device = (userData?['device'] ?? 'Poartă Principală').toString();
     
     final formattedAddress = address
         .replaceAll('CT', 'Constanța')
@@ -571,7 +629,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildSectionTitle('Despre'),
               const SizedBox(height: 20),
               
-              _buildInfoRow('Versiune', '1.90'),
+              _buildInfoRow('Versiune', '1.97.3'),
               _buildInfoRow('Dezvoltator', 'Casa Luminii Balasa S.R.L.'),
               
               const SizedBox(height: 40),
