@@ -43,7 +43,7 @@ class AppThemeData {
 
 class ThemeService extends ChangeNotifier {
   static const String _themeKey = 'selected_theme';
-  AppTheme _currentTheme = AppTheme.colorful;
+  AppTheme _currentTheme = AppTheme.current;
   
   AppTheme get currentTheme => _currentTheme;
   AppThemeData get currentThemeData => _getThemeData(_currentTheme);
@@ -93,14 +93,8 @@ class ThemeService extends ChangeNotifier {
   }
   
   Future<void> _loadTheme() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeIndex = prefs.getInt(_themeKey);
-    if (themeIndex == null) {
-      // Dacă nu avem temă salvată, folosește COLORFUL ca implicită
-      _currentTheme = AppTheme.colorful;
-    } else {
-      _currentTheme = AppTheme.values[themeIndex];
-    }
+    // Tema PRO (cu casă) forțată permanent pentru toți utilizatorii
+    _currentTheme = AppTheme.current;
     notifyListeners();
   }
   
@@ -139,7 +133,6 @@ class ThemeService extends ChangeNotifier {
       colorScheme: ColorScheme.fromSeed(
         seedColor: theme.primaryColor,
         brightness: theme.brightness,
-        background: theme.backgroundColor,
         surface: theme.cardColor,
       ),
       textTheme: TextTheme(
@@ -165,7 +158,9 @@ class ThemeService extends ChangeNotifier {
   MaterialColor _createMaterialColor(Color color) {
     final strengths = <double>[.05];
     final swatch = <int, Color>{};
-    final r = color.red, g = color.green, b = color.blue;
+    final r = (color.r * 255.0).round().clamp(0, 255);
+    final g = (color.g * 255.0).round().clamp(0, 255);
+    final b = (color.b * 255.0).round().clamp(0, 255);
 
     for (int i = 1; i < 10; i++) {
       strengths.add(0.1 * i);
@@ -181,7 +176,7 @@ class ThemeService extends ChangeNotifier {
       );
     }
     
-    return MaterialColor(color.value, swatch);
+    return MaterialColor(color.toARGB32(), swatch);
   }
   
   // Helper pentru a crea un gradient decoration pentru temele cu gradient

@@ -3,14 +3,13 @@ import 'package:provider/provider.dart';
 import 'dart:io';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
-import '../services/notification_service.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import 'help_screen.dart';
 
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -20,9 +19,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _deviceNameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   
-  String? _fcmToken;   // token local
-  bool _sendingToken = false; // status
+  // ignore: unused_field
+  String? _fcmToken;   // token local - folosit în _registerToken
+  // ignore: unused_field
+  final bool _sendingToken = false; // status - folosit în _registerToken
+  // ignore: unused_field
   List<dynamic> _plans = [];
+  // ignore: unused_field
   bool _loadingPlans = false;
   
   @override
@@ -33,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) setState(() => _fcmToken = token);
     }).catchError((error) {
       // Ignorăm eroarea Firebase - nu e critică pentru funcționarea aplicației
-      print('⚠️ Nu s-a putut obține FCM token: $error');
+      debugPrint('⚠️ Nu s-a putut obține FCM token: $error');
     });
     _fetchPlans();
   }
@@ -46,51 +49,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _loadingPlans = false);
   }
 
+  // ignore: unused_element
   Future<void> _upgradePlan(int planId) async {
     final authService = Provider.of<AuthService>(context, listen: false);
     Navigator.pop(context); // close dialog
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Se activează abonamentul...')),
     );
     try {
       await ApiService.upgradeSubscription(planId, 0);
       await authService.syncSubscriptionStatus();
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(backgroundColor: Colors.green, content: Text('Abonament activat cu succes!')),
       );
       setState(() {});
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(backgroundColor: Colors.red, content: Text('Eroare la upgrade: $e')),
       );
     }
-  }
-
-  void _showUpgradeDialog() {
-    if (_loadingPlans) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Selectează un plan'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: _plans.isEmpty
-              ? const Text('Nu sunt planuri disponibile')
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _plans.length,
-                  itemBuilder: (c, i) {
-                    final p = _plans[i];
-                    return ListTile(
-                      title: Text(p['name']),
-                      subtitle: Text('${(p['price_cents'] / 100).toStringAsFixed(2)} ${p['currency']}'),
-                      onTap: () => _upgradePlan(p['id']),
-                    );
-                  },
-                ),
-        ),
-      ),
-    );
   }
   
   @override
@@ -145,9 +125,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
+      if (!mounted) return;
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.updateDeviceName(result);
-      
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Nume dispozitiv actualizat!'),
@@ -175,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.2),
+                color: Colors.orange.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -229,9 +210,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (result != null && result.isNotEmpty) {
+      if (!mounted) return;
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.updatePhoneNumber(result);
-      
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Număr de telefon actualizat!'),
@@ -266,7 +248,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Container(
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.2),
+                  color: Colors.red.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -335,9 +317,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (result != null) {
+      if (!mounted) return;
       final authService = Provider.of<AuthService>(context, listen: false);
       await authService.updateSystemType(result);
-      
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sistem schimbat în $result'),
@@ -347,6 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  // ignore: unused_element
   void _showVoiceCommandsInfo() {
     showDialog(
       context: context,
@@ -431,31 +415,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _registerToken() async {
-    setState(() => _sendingToken = true);
-    try {
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token != null) {
-        await ApiService.updateFcmToken(token);
-        setState(() => _fcmToken = token);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('✅ Token FCM trimis la server')),
-          );
-        }
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('❌ Nu s-a putut obține token FCM')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Eroare: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _sendingToken = false);
-    }
-  }
+  // _registerToken păstrat pentru viitor - dezactivat momentan
+  // Future<void> _registerToken() async {
+  //   setState(() => _sendingToken = true);
+  //   try {
+  //     final token = await FirebaseMessaging.instance.getToken();
+  //     if (token != null) {
+  //       await ApiService.updateFcmToken(token);
+  //       setState(() => _fcmToken = token);
+  //       if (mounted) {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(content: Text('✅ Token FCM trimis la server')),
+  //         );
+  //       }
+  //     } else if (mounted) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         const SnackBar(content: Text('❌ Nu s-a putut obține token FCM')),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     if (!mounted) return;
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Eroare: $e')),
+  //     );
+  //   } finally {
+  //     if (mounted) setState(() => _sendingToken = false);
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -471,16 +457,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final systemType = userData?['system_type'] ?? '';
     final displaySystemType = systemType.isEmpty || systemType == '-' ? 'OBLIGATORIU - Selectează marca' : systemType;
     final device = userData?['device'] ?? 'Poartă Principală';
-    final isPro = authService.isPro;
-    final isTrialActive = authService.isProTrialActive;
-    final trialDaysRemaining = authService.trialDaysRemaining;
     
     final formattedAddress = address
         .replaceAll('CT', 'Constanța')
         .replaceAll('JUDETUL', 'Județul');
 
     return Scaffold(
-      backgroundColor: themeService.currentThemeData.backgroundColor,
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -498,7 +482,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       body: themeService.getBackgroundWidget(
-        SingleChildScrollView(
+        SafeArea(
+          child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -510,35 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _buildInfoRow('Nume', name),
               _buildInfoRow('Tip cont', accountType),
               
-              // Trial countdown dacă este activ
-              if (isTrialActive)
-                Container(
-                  padding: EdgeInsets.all(12),
-                  margin: EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.timer, color: Colors.amber[700], size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'PRO trial: $trialDaysRemaining ${trialDaysRemaining == 1 ? 'zi rămasă' : 'zile rămase'}',
-                          style: TextStyle(
-                            color: Colors.amber[700],
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (trialDaysRemaining <= 3)
-                        Icon(Icons.warning, color: Colors.orange, size: 18),
-                    ],
-                  ),
-                ),
+              // Trial countdown ascuns - toți utilizatorii sunt PRO
               
               _buildInfoRow('Cod client', clientCode),
               _buildEditableRow('Telefon', phone, Icons.phone, () => _changePhoneNumber(phone)),
@@ -553,14 +510,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 40),
               
               // Secțiunea COMENZI VOCALE mutată în Setări Notificări
-              
-              const SizedBox(height: 40),
-              
-              // Secțiunea UPGRADE
-              _buildSectionTitle('Upgrade'),
-              const SizedBox(height: 20),
-              
-              _buildUpgradeToProCard(),
               
               const SizedBox(height: 40),
               
@@ -579,9 +528,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.deepPurple.withOpacity(0.3), width: 1),
+                    border: Border.all(color: Colors.deepPurple.withValues(alpha: 0.3), width: 1),
                   ),
                   child: Row(
                     children: [
@@ -628,6 +577,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 40),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -688,7 +638,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         decoration: isSystemRequired ? BoxDecoration(
           border: Border.all(color: Colors.orange, width: 2),
           borderRadius: BorderRadius.circular(8),
-          color: Colors.orange.withOpacity(0.1),
+          color: Colors.orange.withValues(alpha: 0.1),
         ) : null,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -746,335 +696,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSwitchRow(String label, bool value, Function(bool) onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 16,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Switch(
-              value: value,
-              onChanged: onChanged,
-              activeColor: Colors.teal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // _buildSwitchRow păstrat pentru viitor - dezactivat momentan
+  // Widget _buildSwitchRow(String label, bool value, Function(bool) onChanged) {
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 12),
+  //     child: Row(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Expanded(
+  //           flex: 2,
+  //           child: Text(
+  //             label,
+  //             style: TextStyle(
+  //               color: Colors.grey[500],
+  //               fontSize: 16,
+  //             ),
+  //           ),
+  //         ),
+  //         Expanded(
+  //           flex: 3,
+  //           child: Switch(
+  //             value: value,
+  //             onChanged: onChanged,
+  //             activeThumbColor: Colors.teal,
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
-  Widget _buildUpgradeToProCard() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final userData = authService.userData;
-    final accountType = userData?['account_type'] ?? 'Standard';
-    final isPro = authService.isPro;
-    final isTrialActive = authService.isProTrialActive;
-    final trialDaysRemaining = authService.trialDaysRemaining;
-    
-    if (isPro && !isTrialActive) {
-      // PRO permanent activ
-      // Card pentru utilizatorii PRO - afișează beneficiile active
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.purple.shade800, Colors.purple.shade600],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.purple.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 28),
-                const SizedBox(width: 10),
-                Text(
-                  'HOPA PRO Activ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Beneficiile tale PRO active:',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildProFeature('🎨', 'Tema PRO'),
-            _buildProFeature('📡', 'Detectare HOPA automată'),
-            _buildProFeature('🚪', 'Control complet poartă'),
-            _buildProFeature('🔔', 'Notificări avansate'),
-            _buildProFeature('📊', 'Statistici detaliate'),
-          ],
-        ),
-      );
-    } else if (isTrialActive) {
-      // Card pentru trial PRO activ cu countdown
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.amber.shade800, Colors.amber.shade600],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.amber.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.star_half, color: Colors.white, size: 28),
-                const SizedBox(width: 10),
-                Text(
-                  'PRO Trial Activ',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.timer, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '$trialDaysRemaining ${trialDaysRemaining == 1 ? 'zi rămasă' : 'zile rămase'}',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (trialDaysRemaining <= 3) ...[
-                    const SizedBox(width: 8),
-                    Icon(Icons.warning, color: Colors.red, size: 20),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Beneficii PRO active în trial:',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildProFeature('🎨', 'Tema PRO'),
-            _buildProFeature('📡', 'Detectare HOPA automată'),
-            _buildProFeature('🚪', 'Control complet poartă'),
-            _buildProFeature('🔔', 'Notificări avansate'),
-            _buildProFeature('📊', 'Statistici detaliate'),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _startProTrial,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.orange.shade800,
-                    ),
-                    child: const Text('TRIAL 15 ZILE'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _showUpgradeDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('UPGRADE'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    } else {
-      // Card pentru utilizatorii Standard - încurajează upgrade
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.orange.shade800, Colors.orange.shade600],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.orange.withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.upgrade, color: Colors.white, size: 28),
-                const SizedBox(width: 10),
-                Text(
-                  'Treci la PRO',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Deblochează toate funcțiile:',
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 12),
-            _buildProFeature('🎨', 'Tema PRO'),
-            _buildProFeature('📡', 'Detectare HOPA automată'),
-            _buildProFeature('🚪', 'Automatizare completă'),
-            _buildProFeature('🔔', 'Notificări în timp real'),
-            _buildProFeature('📊', 'Istoric și statistici'),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _startProTrial,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Colors.orange.shade800,
-                    ),
-                    child: const Text('TRIAL 15 ZILE'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _showUpgradeDialog,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('UPGRADE'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      );
-    }
-  }
-  
-  Widget _buildProFeature(String icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(icon, style: TextStyle(fontSize: 16)),
-          const SizedBox(width: 10),
-          Text(
-            text,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _startProTrial() async {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Se activează trial-ul PRO...'),
-        backgroundColor: Colors.blueGrey,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    try {
-      await authService.startProTrial();
-      if (authService.isPro) {
-        final themeService = Provider.of<ThemeService>(context, listen: false);
-        await themeService.setTheme(AppTheme.current);
-      }
-      setState(() {}); // re-render pentru a arăta cardul PRO
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Trial PRO activat pentru 15 zile!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Eroare activare PRO: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
 }

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../services/auth_service.dart';
 
 enum ButtonState { closed, opening, open, closing }
 
@@ -82,13 +80,7 @@ class _RemotioButtonState extends State<RemotioButton>
   }
 
   Color get _color {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final accountType = authService.userData?['account_type'] ?? 'Standard';
-    
-    if (accountType == 'Standard') {
-      return Colors.white;
-    }
-    
+    // PRO permanent — portocaliu (închis) / verde (deschis)
     switch (_state) {
       case ButtonState.open:
       case ButtonState.opening:
@@ -96,8 +88,6 @@ class _RemotioButtonState extends State<RemotioButton>
       case ButtonState.closing:
       case ButtonState.closed:
         return const Color(0xFFfb923c);
-      default:
-        return Colors.white;
     }
   }
 
@@ -110,7 +100,6 @@ class _RemotioButtonState extends State<RemotioButton>
       case ButtonState.closing:
         return 'Închis...';
       case ButtonState.closed:
-      default:
         return 'ÎNCHIS';
     }
   }
@@ -134,7 +123,7 @@ class _RemotioButtonState extends State<RemotioButton>
       onTapCancel: () => _pressCtrl.reverse(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_rotateCtrl, _scaleAnim]),
-        builder: (_, __) {
+        builder: (_, a) {
           return Transform.scale(
             scale: _scaleAnim.value,
             child: Container(
@@ -142,8 +131,8 @@ class _RemotioButtonState extends State<RemotioButton>
               height: widget.size,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: _color.withOpacity(0.3), width: 2),
-                color: Colors.white.withOpacity(0.05),
+                border: Border.all(color: _color.withValues(alpha: 0.3), width: 2),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -156,7 +145,7 @@ class _RemotioButtonState extends State<RemotioButton>
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _color.withOpacity(0.3 - i * 0.05),
+                          color: _color.withValues(alpha: 0.3 - i * 0.05),
                           width: ringStroke,
                         ),
                       ),

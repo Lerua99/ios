@@ -152,17 +152,17 @@ class AuthService extends ChangeNotifier {
           if (deviceType == 'shelly') {
             // SALVĂM CODUL HOPA (71BDA...) pentru control MQTT
             final hopaCode = (deviceCredentials['hopa_device_code'] ?? '').toString();
-            print('🔍 DEBUG AuthService - hopa_device_code din backend: $hopaCode');
+            debugPrint('🔍 DEBUG AuthService - hopa_device_code din backend: $hopaCode');
             if (hopaCode.isNotEmpty) {
               await prefs.setString('hopa_device_code', hopaCode);
-              print('✅ HOPA device code salvat: $hopaCode');
+              debugPrint('✅ HOPA device code salvat: $hopaCode');
             }
             
             // Salvăm și shelly_device_id dacă există (opțional)
             final shellyId = (deviceCredentials['shelly_device_id'] ?? '').toString();
             if (shellyId.isNotEmpty) {
               await prefs.setString('shelly_device_id', shellyId);
-              print('✅ Shelly device ID salvat: $shellyId');
+              debugPrint('✅ Shelly device ID salvat: $shellyId');
             }
           }
         }
@@ -176,7 +176,7 @@ class AuthService extends ChangeNotifier {
 
       return false;
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       return false;
     }
   }
@@ -191,7 +191,7 @@ class AuthService extends ChangeNotifier {
       await prefs.setString('system_type', validSystem);
       notifyListeners();
       
-      print('System type updated to: $validSystem');
+      debugPrint('System type updated to: $validSystem');
     }
   }
 
@@ -250,12 +250,12 @@ class AuthService extends ChangeNotifier {
         // Trimite sau reîmprospătează token-ul imediat după activarea trial-ului
         await _sendFcmToken();
 
-        print('🌟 PRO Trial activat prin backend!');
+        debugPrint('🌟 PRO Trial activat prin backend!');
       } else {
         throw Exception(response['message'] ?? 'Eroare necunoscută');
       }
     } catch (e) {
-      print('❌ Eroare la activarea trial PRO: $e');
+      debugPrint('❌ Eroare la activarea trial PRO: $e');
       
       // Fallback: activează local dacă backend-ul nu răspunde
       await _activateTrialLocal();
@@ -282,7 +282,7 @@ class AuthService extends ChangeNotifier {
 
       notifyListeners();
       
-      print('🌟 PRO Trial activat local pentru 15 zile până la: ${expiryDate.toString()}');
+      debugPrint('🌟 PRO Trial activat local pentru 15 zile până la: ${expiryDate.toString()}');
     }
   }
   
@@ -325,11 +325,9 @@ class AuthService extends ChangeNotifier {
     }
   }
   
-  // Verifică dacă este utilizator PRO (inclusiv trial)
+  // Toți utilizatorii sunt PRO permanent
   bool get isPro {
-    if (_userData == null) return false;
-    final accountType = _userData!['account_type'];
-    return accountType == 'PRO' || isProTrialActive;
+    return true;
   }
   
   // Verifică dacă trial-ul expiră în curând
@@ -352,7 +350,7 @@ class AuthService extends ChangeNotifier {
       
       notifyListeners();
       
-      print('🔚 PRO Trial expirat - revenit la Standard');
+      debugPrint('🔚 PRO Trial expirat - revenit la Standard');
     }
   }
   
@@ -415,10 +413,10 @@ class AuthService extends ChangeNotifier {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         await ApiService.updateFcmToken(fcmToken);
-        print('FCM Token trimis către backend: $fcmToken');
+        debugPrint('FCM Token trimis către backend: $fcmToken');
       }
     } catch (e) {
-      print('Eroare la trimiterea FCM token: $e');
+      debugPrint('Eroare la trimiterea FCM token: $e');
     }
   }
 }
