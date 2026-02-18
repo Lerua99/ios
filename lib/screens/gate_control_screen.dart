@@ -351,7 +351,7 @@ class _GateControlScreenState extends State<GateControlScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Eroare: ${e.toString().replaceAll('Exception: ', '')}',
+              'Eroare: ${e.toString().replaceAll('Exception: ', '').replaceAll('TimeoutException: ', '')}',
             ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),

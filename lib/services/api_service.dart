@@ -2,8 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/device_utils.dart';
+
+// Instanță globală pentru stocare securizată
+const _storage = FlutterSecureStorage();
 
 class ApiService {
   // Alege automat URL-ul în funcție de mediu: debug ⇒ local, release ⇒ producție
@@ -25,8 +29,7 @@ class ApiService {
 
   // Get auth headers cu token
   static Future<Map<String, String>> getAuthHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await _storage.read(key: 'auth_token');
     
     return {
       ...headers,
@@ -36,8 +39,7 @@ class ApiService {
   
   // Get auth headers cu token + device model
   static Future<Map<String, String>> getAuthHeadersWithDevice() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await _storage.read(key: 'auth_token');
     final deviceModel = await DeviceUtils.getDeviceModel();
     
     return {
@@ -70,10 +72,9 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Salvează token-ul
+        // Salvează token-ul securizat
         if (data['token'] != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', data['token']);
+          await _storage.write(key: 'auth_token', value: data['token']);
         }
         
         print('✅ Client Login SUCCESS: $data');
@@ -112,10 +113,9 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Salvează token-ul
+        // Salvează token-ul securizat
         if (data['token'] != null) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('auth_token', data['token']);
+          await _storage.write(key: 'auth_token', value: data['token']);
         }
         
         print('✅ Installer Login SUCCESS: $data');
@@ -903,8 +903,8 @@ class ApiService {
           'on': on,
         }),
       ).timeout(
-        const Duration(seconds: 4),
-        onTimeout: () => throw TimeoutException('Timeout 4 secunde'),
+        const Duration(seconds: 10),
+        onTimeout: () => throw TimeoutException('Timeout 10 secunde'),
       );
 
       if (response.statusCode == 200) {

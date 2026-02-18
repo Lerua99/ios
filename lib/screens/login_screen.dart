@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
 import '../services/theme_service.dart';
@@ -110,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           letterSpacing: 2,
                         ),
                         textAlign: TextAlign.center,
-                        textCapitalization: TextCapitalization.characters,
+                        keyboardType: TextInputType.number, // Tastatură numerică
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Doar cifre
                         maxLength: 6,
                         decoration: InputDecoration(
                           hintText: 'COD ACTIVARE',
