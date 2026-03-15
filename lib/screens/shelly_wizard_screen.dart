@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -1236,6 +1237,27 @@ class _ShellyWizardScreenState extends State<ShellyWizardScreen>
     }
   }
 
+  /// Testează care broker MQTT e disponibil (Cloudflare Load Balancer)
+  Future<String> _getAvailableMqttBroker() async {
+    const primary = 'mqtt.hopa.tritech.ro';
+    const fallback = 'mqtt.hopa.tritech.ro';
+    const port = 1883;
+
+    try {
+      debugPrint('[SHELLY_MQTT] Testez primary $primary:$port...');
+      final socket = await Socket.connect(
+        primary, port,
+        timeout: const Duration(seconds: 5),
+      );
+      socket.destroy();
+      debugPrint('[SHELLY_MQTT] ✅ Primary disponibil: $primary:$port');
+      return '$primary:$port';
+    } catch (_) {
+      debugPrint('[SHELLY_MQTT] ⚠️ Primary indisponibil, folosesc fallback $fallback:$port');
+      return '$fallback:$port';
+    }
+  }
+
   Future<void> _configureMQTT() async {
     // Previne double-tap (problema #3)
     if (_isProcessing) return;
@@ -1249,6 +1271,10 @@ class _ShellyWizardScreenState extends State<ShellyWizardScreen>
     int attemptCount = 0;
     const maxAttempts = 3;
     bool success = false;
+
+    // Detectează broker-ul disponibil ÎNAINTE de configurare
+    final mqttServer = await _getAvailableMqttBroker();
+    debugPrint('[SHELLY_MQTT] Configurez Shelly cu broker: $mqttServer');
 
     while (attemptCount < maxAttempts && !success) {
       attemptCount++;
@@ -1270,7 +1296,7 @@ class _ShellyWizardScreenState extends State<ShellyWizardScreen>
             'params': {
               'config': {
                 'enable': true,
-                'server': '38.242.225.18:1883',
+                'server': mqttServer,
                 'user': 'hopa',
                 'pass': 'superSecret',
                 'client_id': mqttClientId, // Folosește codul 71BDA...

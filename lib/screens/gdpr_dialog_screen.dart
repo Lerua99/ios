@@ -7,18 +7,6 @@ class GdprDialogScreen extends StatelessWidget {
   const GdprDialogScreen({Key? key, this.onAccepted}) : super(key: key);
 
   Future<void> _accept(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Salvează atât key-ul vechi (pentru compatibilitate) cât și cel specific per-user
-    await prefs.setBool('gdpr_accepted', true);
-    
-    // Salvează și cu key specific per-user pentru a persista între reinstalări
-    final token = prefs.getString('auth_token');
-    if (token != null && token.isNotEmpty) {
-      final userKey = 'gdpr_accepted_${token.substring(0, 10)}';
-      await prefs.setBool(userKey, true);
-    }
-    
     if (onAccepted != null) {
       onAccepted!();
     }
@@ -128,13 +116,12 @@ class GdprDialogScreen extends StatelessWidget {
                     child: OutlinedButton(
                       onPressed: () async {
                         final prefs = await SharedPreferences.getInstance();
-                        await prefs.setBool('gdpr_accepted', false);
-                        
-                        // Șterge și key-ul specific per-user
-                        final token = prefs.getString('auth_token');
-                        if (token != null && token.isNotEmpty) {
-                          final userKey = 'gdpr_accepted_${token.substring(0, 10)}';
-                          await prefs.remove(userKey);
+
+                        // Șterge toate cheile GDPR (legacy + per-user).
+                        for (final key in prefs.getKeys()) {
+                          if (key == 'gdpr_accepted' || key.startsWith('gdpr_accepted_')) {
+                            await prefs.remove(key);
+                          }
                         }
                         
                         Future.delayed(const Duration(milliseconds: 50), () => Navigator.of(context).pushAndRemoveUntil(
@@ -196,5 +183,4 @@ Widget _section(String title, String body) {
     ),
   );
 }
-
 

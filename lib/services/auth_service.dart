@@ -4,7 +4,10 @@ import 'api_service.dart';
 // import 'shelly_cloud_service.dart'; - ELIMINAT, nu mai folosim cloud Shelly
 import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 class AuthService extends ChangeNotifier {
+  final _storage = const FlutterSecureStorage();
   bool _isAuthenticated = false;
   Map<String, dynamic>? _userData;
   String? _userRole; // 'client' sau 'installer'
@@ -22,7 +25,7 @@ class AuthService extends ChangeNotifier {
   
   Future<void> _checkAuthStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = await _storage.read(key: 'auth_token');
     final role = prefs.getString('user_role') ?? 'client';
     final userName = prefs.getString('user_name');
     final userPhone = prefs.getString('user_phone');
@@ -121,7 +124,10 @@ class AuthService extends ChangeNotifier {
 
         // Salvează detalii minime în SharedPreferences pentru sesiuni viitoare
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', response['token']);
+        
+        // 🔒 Salvează token-ul securizat
+        await _storage.write(key: 'auth_token', value: response['token']);
+        
         await prefs.setString('user_role', role);
         await prefs.setString('user_name', _userData!['name']);
         await prefs.setString('user_phone', _userData!['phone']);
@@ -152,17 +158,17 @@ class AuthService extends ChangeNotifier {
           if (deviceType == 'shelly') {
             // SALVĂM CODUL HOPA (71BDA...) pentru control MQTT
             final hopaCode = (deviceCredentials['hopa_device_code'] ?? '').toString();
-            debugPrint('🔍 DEBUG AuthService - hopa_device_code din backend: $hopaCode');
+            print('🔍 DEBUG AuthService - hopa_device_code din backend: $hopaCode');
             if (hopaCode.isNotEmpty) {
               await prefs.setString('hopa_device_code', hopaCode);
-              debugPrint('✅ HOPA device code salvat: $hopaCode');
+              print('✅ HOPA device code salvat: $hopaCode');
             }
             
             // Salvăm și shelly_device_id dacă există (opțional)
             final shellyId = (deviceCredentials['shelly_device_id'] ?? '').toString();
             if (shellyId.isNotEmpty) {
               await prefs.setString('shelly_device_id', shellyId);
-              debugPrint('✅ Shelly device ID salvat: $shellyId');
+              print('✅ Shelly device ID salvat: $shellyId');
             }
           }
         }
@@ -176,7 +182,7 @@ class AuthService extends ChangeNotifier {
 
       return false;
     } catch (e) {
-      debugPrint('Login error: $e');
+      print('Login error: $e');
       return false;
     }
   }
@@ -191,7 +197,7 @@ class AuthService extends ChangeNotifier {
       await prefs.setString('system_type', validSystem);
       notifyListeners();
       
-      debugPrint('System type updated to: $validSystem');
+      print('System type updated to: $validSystem');
     }
   }
 
@@ -219,6 +225,7 @@ class AuthService extends ChangeNotifier {
     _userRole = null;
     
     final prefs = await SharedPreferences.getInstance();
+    await _storage.delete(key: 'auth_token');
     await prefs.clear();
     
     notifyListeners();
@@ -250,12 +257,12 @@ class AuthService extends ChangeNotifier {
         // Trimite sau reîmprospătează token-ul imediat după activarea trial-ului
         await _sendFcmToken();
 
-        debugPrint('🌟 PRO Trial activat prin backend!');
+        print('🌟 PRO Trial activat prin backend!');
       } else {
         throw Exception(response['message'] ?? 'Eroare necunoscută');
       }
     } catch (e) {
-      debugPrint('❌ Eroare la activarea trial PRO: $e');
+      print('❌ Eroare la activarea trial PRO: $e');
       
       // Fallback: activează local dacă backend-ul nu răspunde
       await _activateTrialLocal();
@@ -282,7 +289,7 @@ class AuthService extends ChangeNotifier {
 
       notifyListeners();
       
-      debugPrint('🌟 PRO Trial activat local pentru 15 zile până la: ${expiryDate.toString()}');
+      print('🌟 PRO Trial activat local pentru 15 zile până la: ${expiryDate.toString()}');
     }
   }
   
@@ -350,7 +357,7 @@ class AuthService extends ChangeNotifier {
       
       notifyListeners();
       
-      debugPrint('🔚 PRO Trial expirat - revenit la Standard');
+      print('🔚 PRO Trial expirat - revenit la Standard');
     }
   }
   
@@ -413,10 +420,10 @@ class AuthService extends ChangeNotifier {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         await ApiService.updateFcmToken(fcmToken);
-        debugPrint('FCM Token trimis către backend: $fcmToken');
+        print('FCM Token trimis către backend: $fcmToken');
       }
     } catch (e) {
-      debugPrint('Eroare la trimiterea FCM token: $e');
+      print('Eroare la trimiterea FCM token: $e');
     }
   }
 }

@@ -219,9 +219,12 @@ class _InstallerAddClientScreenState extends State<InstallerAddClientScreen> {
             },
           ),
         ));
-      } else if (_deviceType == 'esp32') {
+      } else if (_deviceType == 'hopa') {
         await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => Esp32WizardScreen(clientId: clientId is int ? clientId : 0),
+          builder: (_) => Esp32WizardScreen(
+            clientId: clientId is int ? clientId : 0,
+            hopaDeviceCode: hopaCode is String ? hopaCode : null,
+          ),
         ));
       }
     } catch (e) {
@@ -246,7 +249,7 @@ class _InstallerAddClientScreenState extends State<InstallerAddClientScreen> {
       body: Form(
         key: _formKey,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           child: Column(
             children: [
           _buildClientType(),
@@ -298,9 +301,7 @@ class _InstallerAddClientScreenState extends State<InstallerAddClientScreen> {
               _buildText('Nume dispozitiv (opțional)', _deviceNameController),
               const SizedBox(height: 8),
               _buildDeviceType(),
-              // Nu mai solicităm Shelly Device ID
-              const SizedBox(height: 20),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
               Align(
                 alignment: Alignment.center,
                 child: SizedBox(
@@ -415,10 +416,10 @@ class _InstallerAddClientScreenState extends State<InstallerAddClientScreen> {
             tileColor: const Color(0xFF0f172a),
           ),
           RadioListTile<String>(
-            value: 'esp32',
+            value: 'hopa',
             groupValue: _deviceType,
             onChanged: (v) => setState(() => _deviceType = v!),
-            title: const Text('ESP32 (manual)', style: TextStyle(color: Colors.white)),
+            title: const Text('Modul HOPA', style: TextStyle(color: Colors.white)),
             dense: true,
             activeColor: Colors.white,
             tileColor: const Color(0xFF0f172a),
@@ -746,5 +747,4 @@ class _InstallerAddClientScreenState extends State<InstallerAddClientScreen> {
     }
   }
 }
-
 

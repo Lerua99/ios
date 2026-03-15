@@ -25,7 +25,10 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   Future<void> _loadStats() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await ApiService.getGateStats(_periodParam(_selectedPeriod));
       if (res['success'] == true) {
@@ -34,10 +37,16 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           _loading = false;
         });
       } else {
-        setState(() { _error = res['message'] ?? 'Eroare'; _loading = false; });
+        setState(() {
+          _error = res['message'] ?? 'Eroare';
+          _loading = false;
+        });
       }
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
@@ -58,9 +67,13 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Color _getSourceColor(String source) {
     final s = source.toLowerCase();
+    if (s.contains('tag')) return Colors.teal;
+    if (s.contains('telecom')) return Colors.deepOrange;
+    if (s.contains('dispozitiv') || s.contains('device')) return Colors.indigo;
     if (s.contains('bluetooth') || s.contains('hopa')) return Colors.blue;
     if (s == 'app' || s.contains('aplicat')) return Colors.green;
-    if (s.contains('link') || s.contains('oaspet') || s.contains('guest')) return Colors.cyan;
+    if (s.contains('link') || s.contains('oaspet') || s.contains('guest'))
+      return Colors.cyan;
     if (s.contains('vocal') || s.contains('voice')) return Colors.purple;
     if (s.contains('timer') || s.contains('schedule')) return Colors.orange;
     return Colors.grey;
@@ -68,6 +81,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
 
   Icon _getSourceIcon(String source) {
     final s = source.toLowerCase();
+    if (s.contains('tag')) {
+      return Icon(Icons.vpn_key, color: Colors.teal, size: 16);
+    }
+    if (s.contains('telecom')) {
+      return Icon(Icons.settings_remote, color: Colors.deepOrange, size: 16);
+    }
+    if (s.contains('dispozitiv') || s.contains('device')) {
+      return Icon(Icons.memory, color: Colors.indigo, size: 16);
+    }
     if (s.contains('bluetooth') || s.contains('hopa')) {
       return Icon(Icons.bluetooth, color: Colors.blue, size: 16);
     }
@@ -105,7 +127,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
     final deviceName = authService.userData?['device'] ?? 'Poartă Principală';
-    final currentData = _statsData ?? {'total_cycles': 0, 'last_action': '-', 'history': []};
+    final currentData =
+        _statsData ?? {'total_cycles': 0, 'last_action': '-', 'history': []};
 
     if (_loading) {
       return Scaffold(
@@ -116,7 +139,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     if (_error != null) {
       return Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: Text(_error!, style: TextStyle(color: Colors.red))),
+        body: Center(
+          child: Text(_error!, style: TextStyle(color: Colors.red)),
+        ),
       );
     }
 
@@ -176,7 +201,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               itemBuilder: (context, index) {
                 final period = StatisticsPeriod.values[index];
                 final isSelected = period == _selectedPeriod;
-                
+
                 return Container(
                   margin: EdgeInsets.only(right: 12),
                   child: ElevatedButton(
@@ -187,18 +212,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                       _loadStats();
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isSelected ? Colors.teal : Colors.grey[800],
-                      foregroundColor: isSelected ? Colors.white : Colors.grey[400],
+                      backgroundColor: isSelected
+                          ? Colors.teal
+                          : Colors.grey[800],
+                      foregroundColor: isSelected
+                          ? Colors.white
+                          : Colors.grey[400],
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
                     ),
                     child: Text(
                       _getPeriodName(period),
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
                   ),
@@ -225,11 +259,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 ),
                 SizedBox(height: 15),
-                
+
                 // Stats rows
-                _buildStatRow('Total cicluri', currentData['total_cycles'].toString(), Icons.repeat),
-                _buildStatRow('Ultima acțiune', currentData['last_action'] ?? '-', Icons.access_time),
-                _buildStatRow('Tip dispozitiv', 'Poartă', Icons.door_front_door),
+                _buildStatRow(
+                  'Total cicluri',
+                  currentData['total_cycles'].toString(),
+                  Icons.repeat,
+                ),
+                _buildStatRow(
+                  'Ultima acțiune',
+                  currentData['last_action'] ?? '-',
+                  Icons.access_time,
+                ),
+                _buildStatRow(
+                  'Tip dispozitiv',
+                  'Poartă',
+                  Icons.door_front_door,
+                ),
               ],
             ),
           ),
@@ -253,21 +299,27 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                     ),
                   ),
                   SizedBox(height: 15),
-                  
+
                   Expanded(
                     child: ListView.builder(
                       itemCount: (currentData['history'] as List).length,
                       itemBuilder: (context, index) {
                         final action = (currentData['history'] as List)[index];
-                        
+
                         return Container(
                           margin: EdgeInsets.only(bottom: 15),
-                          padding: EdgeInsets.symmetric(horizontal: 15, vertical: 20),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 15,
+                            vertical: 20,
+                          ),
                           constraints: BoxConstraints(minHeight: 118),
                           decoration: BoxDecoration(
                             color: Colors.grey[900],
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey[800]!, width: 1),
+                            border: Border.all(
+                              color: Colors.grey[800]!,
+                              width: 1,
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -279,11 +331,15 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                   color: Colors.green.withOpacity(0.2),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(Icons.check, color: Colors.green, size: 20),
+                                child: Icon(
+                                  Icons.check,
+                                  color: Colors.green,
+                                  size: 20,
+                                ),
                               ),
-                              
+
                               SizedBox(width: 15),
-                              
+
                               // Action details
                               Expanded(
                                 child: Column(
@@ -299,47 +355,57 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                                     ),
                                     SizedBox(height: 4),
                                     Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         _getSourceIcon(action['source'] ?? ''),
                                         SizedBox(width: 6),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              action['source'] ?? 'necunoscut',
-                              style: TextStyle(
-                                color: _getSourceColor(action['source'] ?? ''),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.visible,
-                            ),
-                            if (action['user_name'] != null) ...[
-                              SizedBox(height: 2),
-                              Text(
-                                action['user_name'].toString(),
-                                style: TextStyle(
-                                  color: _getSourceColor(action['source'] ?? '').withOpacity(0.8),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w400,
-                                  height: 1.2,
-                                ),
-                                maxLines: 5,
-                                overflow: TextOverflow.visible,
-                                softWrap: true,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                action['source'] ??
+                                                    'necunoscut',
+                                                style: TextStyle(
+                                                  color: _getSourceColor(
+                                                    action['source'] ?? '',
+                                                  ),
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                overflow: TextOverflow.visible,
+                                              ),
+                                              if (action['user_name'] !=
+                                                  null) ...[
+                                                SizedBox(height: 2),
+                                                Text(
+                                                  action['user_name']
+                                                      .toString(),
+                                                  style: TextStyle(
+                                                    color: _getSourceColor(
+                                                      action['source'] ?? '',
+                                                    ).withOpacity(0.8),
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w400,
+                                                    height: 1.2,
+                                                  ),
+                                                  maxLines: 5,
+                                                  overflow:
+                                                      TextOverflow.visible,
+                                                  softWrap: true,
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ],
                                 ),
                               ),
-                              
+
                               // Time
                               Text(
                                 action['time'],
@@ -374,10 +440,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             flex: 2,
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 16),
             ),
           ),
           Expanded(
@@ -396,5 +459,4 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
     );
   }
-
-} 
+}

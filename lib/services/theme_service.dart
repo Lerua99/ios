@@ -133,6 +133,7 @@ class ThemeService extends ChangeNotifier {
       colorScheme: ColorScheme.fromSeed(
         seedColor: theme.primaryColor,
         brightness: theme.brightness,
+        background: theme.backgroundColor,
         surface: theme.cardColor,
       ),
       textTheme: TextTheme(
@@ -158,9 +159,7 @@ class ThemeService extends ChangeNotifier {
   MaterialColor _createMaterialColor(Color color) {
     final strengths = <double>[.05];
     final swatch = <int, Color>{};
-    final r = (color.r * 255.0).round().clamp(0, 255);
-    final g = (color.g * 255.0).round().clamp(0, 255);
-    final b = (color.b * 255.0).round().clamp(0, 255);
+    final r = color.red, g = color.green, b = color.blue;
 
     for (int i = 1; i < 10; i++) {
       strengths.add(0.1 * i);
@@ -176,7 +175,7 @@ class ThemeService extends ChangeNotifier {
       );
     }
     
-    return MaterialColor(color.toARGB32(), swatch);
+    return MaterialColor(color.value, swatch);
   }
   
   // Helper pentru a crea un gradient decoration pentru temele cu gradient

@@ -100,6 +100,7 @@ class _RemotioButtonState extends State<RemotioButton>
       case ButtonState.closing:
         return 'Închis...';
       case ButtonState.closed:
+      default:
         return 'ÎNCHIS';
     }
   }

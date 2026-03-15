@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,10 +14,164 @@ import 'screens/gate_control_screen.dart';
 import 'screens/provision_wait_screen.dart';
 import 'screens/gdpr_dialog_screen.dart';
 import 'screens/installer_dashboard_screen.dart';
+import 'screens/camera_stream_screen.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+final Set<String> _handledMessageIds = <String>{};
+
+bool _isTrueLike(dynamic value) {
+  final text = (value ?? '').toString().trim().toLowerCase();
+  return text == '1' || text == 'true' || text == 'yes' || text == 'y';
+}
+
+bool _shouldOpenCameraFromPush(Map<String, dynamic> data) {
+  if (_isTrueLike(data['open_camera'])) {
+    return true;
+  }
+
+  final type = (data['type'] ?? '').toString().toLowerCase();
+  final action = (data['action'] ?? '').toString().toLowerCase();
+  if (type == 'gate_action' && (action == 'opened' || action == 'open')) {
+    return true;
+  }
+
+  final watchedKeys = <String>[
+    'screen',
+    'target',
+    'route',
+    'action',
+    'type',
+    'click_action',
+  ];
+
+  for (final key in watchedKeys) {
+    final value = (data[key] ?? '').toString().toLowerCase();
+    if (value.contains('camera')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool _isShellyType(String raw) {
+  final lowered = raw.trim().toLowerCase();
+  return lowered.contains('shelly');
+}
+
+bool _isEsp32Type(String raw) {
+  final lowered = raw.trim().toLowerCase();
+  return lowered == 'esp32' ||
+      lowered == 'hopa' ||
+      lowered.startsWith('hopa_') ||
+      lowered.startsWith('hopa-') ||
+      lowered.startsWith('hopa ');
+}
+
+Future<bool> _canOpenCameraForPush(Map<String, dynamic> data) async {
+  final payloadType =
+      (data['device_type'] ?? data['module_type'] ?? data['controller_type'])
+          .toString();
+
+  if (payloadType.trim().isNotEmpty) {
+    if (_isShellyType(payloadType)) return false;
+    return _isEsp32Type(payloadType);
+  }
+
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final localType = prefs.getString('device_type') ?? '';
+    if (localType.trim().isNotEmpty) {
+      if (_isShellyType(localType)) return false;
+      return _isEsp32Type(localType);
+    }
+  } catch (_) {
+    // Fallback silențios: dacă nu putem citi tipul modulului, nu deschidem camera.
+  }
+
+  return false;
+}
+
+String? _extractCameraUrl(Map<String, dynamic> data) {
+  final raw = (data['camera_url'] ?? data['stream_url'] ?? data['camera_ip'])
+      ?.toString()
+      .trim();
+  if (raw == null || raw.isEmpty || raw.toLowerCase() == 'null') {
+    return null;
+  }
+  return raw;
+}
+
+String? _extractCameraMac(Map<String, dynamic> data) {
+  final raw = (data['camera_mac'] ?? data['device_mac'] ?? data['mac_address'])
+      ?.toString()
+      .trim();
+  if (raw == null || raw.isEmpty || raw.toLowerCase() == 'null') {
+    return null;
+  }
+
+  final normalized = raw.toUpperCase().replaceAll('-', ':');
+  if (!RegExp(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$').hasMatch(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
+void _openCameraScreen({
+  String? cameraUrl,
+  String? cameraMac,
+  int attempt = 0,
+}) {
+  final nav = appNavigatorKey.currentState;
+  if (nav == null) {
+    if (attempt < 10) {
+      Future.delayed(
+        const Duration(milliseconds: 300),
+        () => _openCameraScreen(
+          cameraUrl: cameraUrl,
+          cameraMac: cameraMac,
+          attempt: attempt + 1,
+        ),
+      );
+    }
+    return;
+  }
+
+  nav.push(
+    MaterialPageRoute(
+      builder: (_) =>
+          CameraStreamScreen(cameraUrl: cameraUrl, deviceMac: cameraMac),
+      fullscreenDialog: true,
+    ),
+  );
+}
+
+Future<void> _handleNotificationTap(RemoteMessage message) async {
+  final messageId = message.messageId;
+  if (messageId != null && _handledMessageIds.contains(messageId)) {
+    return;
+  }
+  if (messageId != null) {
+    _handledMessageIds.add(messageId);
+  }
+
+  final data = message.data;
+  if (!_shouldOpenCameraFromPush(data)) {
+    return;
+  }
+  if (!await _canOpenCameraForPush(data)) {
+    return;
+  }
+
+  final cameraUrl = _extractCameraUrl(data);
+  final cameraMac = _extractCameraMac(data);
+  _openCameraScreen(cameraUrl: cameraUrl, cameraMac: cameraMac);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
   // Pornim UI-ul imediat, pentru a elimina întârzierea iniţială
   runApp(const HopaFinalApp());
 
@@ -26,13 +181,13 @@ void main() async {
 
 Future<void> _initFirebase() async {
   try {
-  await Firebase.initializeApp();
-  
-  await FirebaseMessaging.instance.requestPermission();
-  
-  final fcmToken = await FirebaseMessaging.instance.getToken();
-  if (fcmToken != null) {
-    print('FCM Token: $fcmToken');
+    await Firebase.initializeApp();
+
+    await FirebaseMessaging.instance.requestPermission();
+
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    if (fcmToken != null) {
+      print('FCM Token: $fcmToken');
     }
 
     // 🔄 Ascultă reîmprospătarea token-ului şi îl trimite instant la backend
@@ -44,6 +199,15 @@ Future<void> _initFirebase() async {
         print('❌ Eroare la update FCM token: $e');
       }
     });
+
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _handleNotificationTap(message);
+    });
+
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      await _handleNotificationTap(initialMessage);
+    }
   } catch (e) {
     print('Firebase init error: $e — continuăm fără Firebase');
   }
@@ -66,6 +230,7 @@ class HopaFinalApp extends StatelessWidget {
           return MaterialApp(
             title: 'HOPA Gates',
             theme: themeService.flutterThemeData,
+            navigatorKey: appNavigatorKey,
             home: const AuthWrapper(),
             debugShowCheckedModeBanner: false,
           );
@@ -85,46 +250,46 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _isLoading = true;
   bool _gdprAccepted = false;
-  
+  String? _gdprUserKey;
+  bool _gdprStatusLoading = false;
+
   @override
   void initState() {
     super.initState();
     _initializeApp();
   }
-  
+
   Future<void> _initializeApp() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
       final prefs = await SharedPreferences.getInstance();
-      
-      // Citește GDPR la pornire - verifică atât key-ul vechi cât și cel nou legat de user
-      // Pentru compatibilitate cu versiunile vechi
-      final oldGdprAccepted = prefs.getBool('gdpr_accepted') ?? false;
-      
-      // Verifică dacă avem token pentru a crea key specific per-user
-      final token = prefs.getString('auth_token');
-      if (token != null && token.isNotEmpty) {
-        // Folosește key specific per-user (bazat pe hash-ul token-ului)
-        final userKey = 'gdpr_accepted_${token.substring(0, 10)}'; // Primele 10 caractere
-        _gdprAccepted = prefs.getBool(userKey) ?? oldGdprAccepted;
-        
-        // Dacă avem acceptare veche, o migrăm la noul key
-        if (oldGdprAccepted && !_gdprAccepted) {
-          await prefs.setBool(userKey, true);
-          _gdprAccepted = true;
+      _gdprAccepted = false;
+
+      // GDPR este strict per-cont (nu mai folosim fallback global).
+      final role = prefs.getString('user_role');
+      final clientId = prefs.getInt('client_id') ?? 0;
+      final installerId = prefs.getInt('installer_id') ?? 0;
+      if (role != null) {
+        final startupKey = _buildGdprUserKey(
+          role: role,
+          clientId: clientId,
+          installerId: installerId,
+        );
+        if (startupKey != null) {
+          _gdprUserKey = startupKey;
+          _gdprAccepted = prefs.getBool(startupKey) ?? false;
         }
-      } else {
-        _gdprAccepted = oldGdprAccepted;
       }
-      
+
       // Verifică dacă trial-ul PRO a expirat (doar pentru clienți)
       if (authService.isClient) {
         await authService.checkTrialExpiry();
-        
+
         // Afișează popup de trial DOAR pentru CLIENȚI (nu pentru instalatori)
         if (authService.isAuthenticated && !authService.isPro) {
-          final hasSeenTrialPopup = prefs.getBool('has_seen_trial_popup') ?? false;
-          
+          final hasSeenTrialPopup =
+              prefs.getBool('has_seen_trial_popup') ?? false;
+
           if (!hasSeenTrialPopup) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _showTrialOfferPopup();
@@ -140,11 +305,58 @@ class _AuthWrapperState extends State<AuthWrapper> {
       });
     }
   }
-  
+
+  String? _buildGdprUserKey({
+    required String role,
+    required int clientId,
+    required int installerId,
+  }) {
+    if (role == 'installer' && installerId > 0) {
+      return 'gdpr_accepted_installer_$installerId';
+    }
+    if (role == 'client' && clientId > 0) {
+      return 'gdpr_accepted_client_$clientId';
+    }
+    return null;
+  }
+
+  String? _buildGdprUserKeyFromAuth(AuthService authService) {
+    final role = authService.userRole;
+    if (role == null) return null;
+    final data = authService.userData ?? {};
+    final clientId = (data['client_id'] is int) ? data['client_id'] as int : 0;
+    final installerId = (data['installer_id'] is int)
+        ? data['installer_id'] as int
+        : 0;
+    return _buildGdprUserKey(
+      role: role,
+      clientId: clientId,
+      installerId: installerId,
+    );
+  }
+
+  Future<void> _loadGdprForUserKey(String key) async {
+    if (_gdprStatusLoading && _gdprUserKey == key) return;
+    setState(() {
+      _gdprStatusLoading = true;
+      _gdprUserKey = key;
+      _gdprAccepted = false;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool(key) ?? false;
+
+    if (!mounted) return;
+    setState(() {
+      _gdprAccepted = accepted;
+      _gdprStatusLoading = false;
+    });
+  }
+
   void _showTrialOfferPopup() async {
     final authService = Provider.of<AuthService>(context, listen: false);
     final prefs = await SharedPreferences.getInstance();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -153,10 +365,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           children: [
             Icon(Icons.star, color: Colors.amber, size: 28),
             const SizedBox(width: 10),
-            Text(
-              'Încearcă HOPA PRO',
-              style: TextStyle(color: Colors.white),
-            ),
+            Text('Încearcă HOPA PRO', style: TextStyle(color: Colors.white)),
           ],
         ),
         content: Column(
@@ -191,7 +400,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context); // Închide dialog-ul imediat
-              
+
               // Arată loading
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -200,11 +409,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
                   duration: Duration(seconds: 2),
                 ),
               );
-              
+
               try {
                 await authService.startProTrial();
                 await prefs.setBool('has_seen_trial_popup', true);
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('🌟 PRO Trial activat pentru 15 zile!'),
@@ -240,9 +449,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                color: Colors.teal,
-              ),
+              CircularProgressIndicator(color: Colors.teal),
               SizedBox(height: 20),
               Text(
                 'HOPA Gates',
@@ -255,36 +462,45 @@ class _AuthWrapperState extends State<AuthWrapper> {
               SizedBox(height: 10),
               Text(
                 'Se încarcă...',
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.grey, fontSize: 16),
               ),
             ],
           ),
         ),
       );
     }
-    
+
     final authService = Provider.of<AuthService>(context);
-    
+
     if (authService.isAuthenticated) {
+      final expectedGdprKey = _buildGdprUserKeyFromAuth(authService);
+      if (expectedGdprKey != null && expectedGdprKey != _gdprUserKey) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadGdprForUserKey(expectedGdprKey);
+        });
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(child: CircularProgressIndicator(color: Colors.teal)),
+        );
+      }
+
+      if (_gdprStatusLoading) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(child: CircularProgressIndicator(color: Colors.teal)),
+        );
+      }
+
       // Blochează aplicația până la acceptarea GDPR
       if (!_gdprAccepted) {
         return GdprDialogScreen(
           onAccepted: () async {
             final prefs = await SharedPreferences.getInstance();
-            
-            // Salvează atât key-ul vechi (pentru compatibilitate) cât și cel specific per-user
-            await prefs.setBool('gdpr_accepted', true);
-            
-            // Salvează și cu key specific per-user
-            final token = prefs.getString('auth_token');
-            if (token != null && token.isNotEmpty) {
-              final userKey = 'gdpr_accepted_${token.substring(0, 10)}';
-              await prefs.setBool(userKey, true);
+
+            if (_gdprUserKey != null) {
+              await prefs.setBool(_gdprUserKey!, true);
             }
-            
+
             setState(() {
               _gdprAccepted = true;
             });
@@ -314,7 +530,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
             final data = snapshot.data as Map<String, dynamic>;
 
             // Considerăm provisionat dacă backend a raportat explicit, sau dacă avem vreun status
-            final hasAnyState = data.containsKey('state') || data.containsKey('gate_status');
+            final hasAnyState =
+                data.containsKey('state') || data.containsKey('gate_status');
             final provisioned = (data['provisioned'] == true) || hasAnyState;
 
             if (provisioned) {

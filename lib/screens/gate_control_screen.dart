@@ -24,6 +24,7 @@ import '../providers/gate_provider.dart';
 import 'guest_invitation_screen.dart';
 import 'messages_screen.dart';
 import 'notification_settings_screen.dart'; // NOU: Importăm ecranul cu mesajele SOS
+import 'camera_stream_screen.dart';
 
 // Tipurile de porți
 enum GateType { principal, pedestrian, garage }
@@ -44,6 +45,7 @@ class GateControlScreen extends StatefulWidget {
 
 class _GateControlScreenState extends State<GateControlScreen>
     with TickerProviderStateMixin {
+  static const String _cameraMacPrefsKey = 'hopa_camera_mac';
   GateType _activeGate = GateType.principal;
   bool _isAnimating = false;
   bool _isActivating = false;
@@ -221,6 +223,81 @@ class _GateControlScreenState extends State<GateControlScreen>
         _isLoading = false;
       });
     }
+  }
+
+  String _normalizeMacAddress(String raw) {
+    final cleaned = raw.trim().toUpperCase().replaceAll('-', ':');
+    if (!RegExp(r'^([0-9A-F]{2}:){5}[0-9A-F]{2}$').hasMatch(cleaned)) {
+      return '';
+    }
+    return cleaned;
+  }
+
+  String _normalizeHopaType(dynamic value, String name) {
+    final raw = (value ?? '').toString().trim().toLowerCase();
+    if (raw == 'tag' || raw == 'camera' || raw == 'switch') {
+      return raw;
+    }
+    final lowered = name.toLowerCase();
+    if (lowered.contains('camera')) return 'camera';
+    if (lowered.contains('switch')) return 'switch';
+    return 'tag';
+  }
+
+  int _extractClientId(AuthService authService) {
+    final value = authService.userData?['client_id'];
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  Future<String?> _resolveCameraMac() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cached = _normalizeMacAddress(prefs.getString(_cameraMacPrefsKey) ?? '');
+    if (cached.isNotEmpty) {
+      return cached;
+    }
+
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final clientId = _extractClientId(authService);
+    if (clientId <= 0) {
+      return null;
+    }
+
+    try {
+      final response = await ApiService.getHopaDevices(clientId);
+      final devices = (response['devices'] as List<dynamic>? ?? [])
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+
+      for (final device in devices) {
+        final name = (device['device_name'] ?? '').toString();
+        final type = _normalizeHopaType(device['device_type'], name);
+        if (type != 'camera') continue;
+        final mac = _normalizeMacAddress((device['mac_address'] ?? '').toString());
+        if (mac.isEmpty) continue;
+        await prefs.setString(_cameraMacPrefsKey, mac);
+        return mac;
+      }
+    } catch (_) {
+      // Fallback la local mode dacă backend-ul nu răspunde.
+    }
+
+    return null;
+  }
+
+  Future<void> _openCameraStream() async {
+    final cameraMac = await _resolveCameraMac();
+    if (!mounted) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CameraStreamScreen(deviceMac: cameraMac),
+        fullscreenDialog: true,
+      ),
+    );
   }
 
   @override
@@ -1215,36 +1292,27 @@ class _GateControlScreenState extends State<GateControlScreen>
                                     (_activeGate == GateType.pedestrian)
                                         ? PedestrianButton(
                                             onPressed:
-                                                (isBusy ||
-                                                    !gateProvider.isInitialized)
+                                                !gateProvider.isInitialized
                                                 ? null
                                                 : _activateGate,
-                                            label: isBusy
-                                                ? 'SE MIȘCĂ...'
-                                                : 'HOPA',
+                                            label: 'HOPA',
                                             size: 200,
                                           )
                                         : (_activeGate == GateType.garage)
                                         ? GarageButton(
                                             onPressed:
-                                                (isBusy ||
-                                                    !gateProvider.isInitialized)
+                                                !gateProvider.isInitialized
                                                 ? null
                                                 : _activateGate,
-                                            label: isBusy
-                                                ? 'SE MIȘCĂ...'
-                                                : 'HOPA',
+                                            label: 'HOPA',
                                             size: 200,
                                           )
                                         : RemotioButton(
                                             onPressed:
-                                                (isBusy ||
-                                                    !gateProvider.isInitialized)
+                                                !gateProvider.isInitialized
                                                 ? null
                                                 : _activateGate,
-                                            label: isBusy
-                                                ? 'SE MIȘCĂ...'
-                                                : 'HOPA',
+                                            label: 'HOPA',
                                             size: 200,
                                           ),
                                     const SizedBox(height: 30),
@@ -1290,131 +1358,150 @@ class _GateControlScreenState extends State<GateControlScreen>
                                     ),
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    // Setări - primul din stânga
-                                    IconButton(
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const SettingsScreen(),
-                                          ),
-                                        );
-                                      },
-                                      icon: Icon(
-                                        Icons.settings,
-                                        color: Colors.blue.shade400,
-                                        size: 32,
-                                      ),
-                                    ),
-                                    // Statistici - doar pentru PRO (lazy loaded)
-                                    if (Provider.of<AuthService>(context).isPro)
-                                      IconButton(
-                                        onPressed: () async {
-                                          // Lazy load - ecranul se încarcă doar când e necesar
-                                          await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const StatisticsScreen(),
-                                            ),
-                                          );
-                                        },
-                                        icon: Icon(
-                                          Icons.history,
-                                          color: Colors.green.shade400,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    // SOS / Cheie tehnică
-                                    IconButton(
-                                      onPressed: _showSOSDialog,
-                                      icon: Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'SOS',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // NOU: Buton pentru Cererile mele SOS
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.list_alt,
-                                        color: Colors.cyan.shade400,
-                                        size: 32,
-                                      ),
-                                      onPressed: () async {
-                                        await Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) => MessagesScreen(
-                                              onRead: () {
-                                                // TODO: aici poți adăuga refresh badge messages dacă e implementat
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    // Notificări - doar PRO
-                                    if (Provider.of<AuthService>(context).isPro)
-                                      IconButton(
-                                        onPressed: _showNotificationsDialog,
-                                        icon: Icon(
-                                          Icons.notifications,
-                                          color: Colors.amber.shade400,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    // Guest Invitations - doar PRO
-                                    if (Provider.of<AuthService>(context).isPro)
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.center,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Setări - primul din stânga
                                       IconButton(
                                         onPressed: () {
                                           Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (context) =>
-                                                  GuestInvitationScreen(),
+                                                  const SettingsScreen(),
                                             ),
                                           );
                                         },
                                         icon: Icon(
-                                          Icons.people,
-                                          color: Colors.purple.shade400,
+                                          Icons.settings,
+                                          color: Colors.blue.shade400,
                                           size: 32,
                                         ),
                                       ),
-                                    // Ieșire
-                                    IconButton(
-                                      onPressed: () {
-                                        authService.logout();
-                                        Navigator.popUntil(
-                                          context,
-                                          (route) => route.isFirst,
-                                        );
-                                      },
-                                      icon: Icon(
-                                        Icons.logout,
-                                        color: Colors.orange.shade400,
-                                        size: 32,
+                                      // Statistici - doar pentru PRO (lazy loaded)
+                                      if (Provider.of<AuthService>(
+                                        context,
+                                      ).isPro)
+                                        IconButton(
+                                          onPressed: () async {
+                                            // Lazy load - ecranul se încarcă doar când e necesar
+                                            await Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const StatisticsScreen(),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.history,
+                                            color: Colors.green.shade400,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      // SOS / Cheie tehnică
+                                      IconButton(
+                                        onPressed: _showSOSDialog,
+                                        icon: Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              'SOS',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                      // NOU: Buton pentru Cererile mele SOS
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.list_alt,
+                                          color: Colors.cyan.shade400,
+                                          size: 32,
+                                        ),
+                                        onPressed: () async {
+                                          await Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => MessagesScreen(
+                                                onRead: () {
+                                                  // TODO: aici poți adăuga refresh badge messages dacă e implementat
+                                                },
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      // Cameră live (fullscreen)
+                                      IconButton(
+                                        onPressed: _openCameraStream,
+                                        icon: Icon(
+                                          Icons.videocam,
+                                          color: Colors.tealAccent.shade400,
+                                          size: 32,
+                                        ),
+                                      ),
+                                      // Notificări - doar PRO
+                                      if (Provider.of<AuthService>(
+                                        context,
+                                      ).isPro)
+                                        IconButton(
+                                          onPressed: _showNotificationsDialog,
+                                          icon: Icon(
+                                            Icons.notifications,
+                                            color: Colors.amber.shade400,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      // Guest Invitations - doar PRO
+                                      if (Provider.of<AuthService>(
+                                        context,
+                                      ).isPro)
+                                        IconButton(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    GuestInvitationScreen(),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(
+                                            Icons.people,
+                                            color: Colors.purple.shade400,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      // Ieșire
+                                      IconButton(
+                                        onPressed: () {
+                                          authService.logout();
+                                          Navigator.popUntil(
+                                            context,
+                                            (route) => route.isFirst,
+                                          );
+                                        },
+                                        icon: Icon(
+                                          Icons.logout,
+                                          color: Colors.orange.shade400,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

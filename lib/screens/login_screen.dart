@@ -113,6 +113,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number, // Tastatură numerică
                         inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Doar cifre
+                        autocorrect: false, // Fără autocorrect
+                        enableSuggestions: false, // Fără sugestii
                         maxLength: 6,
                         decoration: InputDecoration(
                           hintText: 'COD ACTIVARE',

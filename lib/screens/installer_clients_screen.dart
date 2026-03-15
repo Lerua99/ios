@@ -39,6 +39,60 @@ class _InstallerClientsScreenState extends State<InstallerClientsScreen> {
     }
   }
 
+  Future<void> _deleteClient(int clientId, String clientName) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('⚠️ Restaurare cont'),
+        content: Text(
+          'Ești sigur că vrei să ștergi complet clientul "$clientName"?\n\n'
+          'Se va șterge tot din baza de date (inclusiv contul utilizatorului). '
+          'Vei putea reîncepe instalarea de la zero.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Anulează'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Șterge și reinstalează',
+                style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final response = await ApiService.deleteClient(clientId);
+      if (response['success'] == true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Client șters. Poți reîncepe instalarea.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        _loadClients();
+      } else {
+        throw Exception(response['message'] ?? 'Eroare la ștergere');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Eroare: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   List<dynamic> get _filteredClients {
     if (_searchQuery.isEmpty) return _clients;
     
@@ -263,6 +317,27 @@ class _InstallerClientsScreenState extends State<InstallerClientsScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 8),
+              // Buton Restaurează cont
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    final clientId = client['id'];
+                    if (clientId != null) {
+                      _deleteClient(clientId is int ? clientId : int.parse(clientId.toString()), name);
+                    }
+                  },
+                  icon: const Icon(Icons.restore, size: 16, color: Colors.red),
+                  label: const Text(
+                    'Restaurează cont',
+                    style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
